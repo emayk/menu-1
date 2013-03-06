@@ -43,7 +43,7 @@ class Generator
             return;
         }
         $menu->openingTag = "<" . static::ELEMENT;
-        $menu->openingTag .= $this->ItemTypes->attributes($menu->htmlAttrs);
+        $menu->openingTag .= $this->ItemTypes->attributes($menu->html_attrs);
         $menu->openingTag .= ">";
         $menu->closingTag = "\n</" . static::ELEMENT . '>';
     }
@@ -58,13 +58,12 @@ class Generator
     {
         foreach ($menuItems as $item) {
             if (isset($item->html)) {
-                var_dump(1);
                 continue;
             }
             $item->html = "\n<" . static::ITEMELEMENT;
-            $item->html .= $this->ItemTypes->attributes($item->htmlAttrs);
+            $item->html .= $this->ItemTypes->attributes($item->html_attrs);
             $item->html .= '>';
-            $item->html .= call_user_func_array(array($this->ItemTypes, $item->itemType), $item->typeAttrs);
+            $item->html .= call_user_func_array(array($this->ItemTypes, $item->item_type), $item->type_attrs);
             $item->html .= '</' . static::ITEMELEMENT . '>';
         }
     }

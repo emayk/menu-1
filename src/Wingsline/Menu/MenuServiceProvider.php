@@ -1,5 +1,4 @@
 <?php
-
 namespace Wingsline\Menu;
 
 use Illuminate\Support\ServiceProvider;
@@ -34,7 +33,7 @@ class MenuServiceProvider extends ServiceProvider
     {
         $this->app['menu'] = $this->app->share(
             function () {
-                return new Repository(new Menu, new ItemTypes, new Generator);
+                return new Repository(new Menu, new ItemTypes, new Generator, new ItemTypesGrammar, new ItemBuilder);
             }
         );
         

@@ -13,8 +13,7 @@
 
 App::after(
     function ($request, $response) {
-        $content = $response->getOriginalContent();
-        if ($content instanceof Illuminate\Support\Contracts\RenderableInterface) {
+        if (is_callable(array($response, 'getOriginalContent')) && $response->getOriginalContent() instanceof Illuminate\Support\Contracts\RenderableInterface) {
             // we compile the menus and replace the menu uuid's with the menu
             Menu::finalize($response);
         }

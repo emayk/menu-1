@@ -12,37 +12,63 @@ class ItemTypes
     protected $macros = array();
 
     /**
+     * Default types
+     *
+     * @var array
+     */
+    protected $types = array('link', 'route', 'menu', 'html');
+    /**
      * Creates a link
      * 
-     * @param  string $url
-     * @param  string $title
-     * @param  array  $attributes
-     * @param  array  $parameters
-     * @param  bool   $https
+     * @param  string $url          Link url
+     * @param  string $title        Link text
+     * @param  array  $attributes   Html attributes
+     * @param  array  $parameters   Url parameters
+     * @param  bool   $https        Create a secure url
      * @return string
      */
-    public function link($url, $title = null, $attributes = array(), $parameters = array(), $https = null)
+    public function link($url, $title = null, array $attributes = array(), array $parameters = array(), $https = null)
     {
         // generates a link
         $url = \URL::to($url, $parameters, $https);
         if (is_null($title)) {
             $title = $url;
         }
+
         return '<a href="' . $url . '"' .
             $this->attributes($attributes) . '>' .
             $this->entities($title).'</a>';
     }
 
-     /**
+    /**
+     * Creates a link to a route
+     *
+     * @param $route
+     * @param  string $title        Link text
+     * @param  array  $attributes   Html attributes
+     * @param  array  $parameters   Url parameters
+     * @param  bool   $https        Create a secure url
+     * @internal param string $url Route
+     * @return string
+     */
+    public function route ($route, $title = null, array $attributes = array(), array $parameters = array(), $https = null)
+    {
+        // generates a link
+        $url = \URL::route($route, $parameters, $https);
+        return $this->link($url, $title, $attributes, array(), $https);
+    }
+
+    /**
      * Returns a menu placeholder until the finalize() is called
-     * @param  string $menuName  Name of the menu
-     * @param  array  $htmlAttrs Array of html attributes
-     * @param  mixed  $default   If no menu items are present we display this content
+     * @param  string $menuName   Name of the menu
+     * @param  array  $attributes Html attributes
+     * @param  mixed  $default    If no menu items are present we display this content
+     * @param  string $label
      * @return mixed
      */
-    public function menu ($menuName, array $htmlAttrs = array(), $default = null, $label = null)
+    public function menu ($menuName, array $attributes = array(), $default = null, $label = null)
     {
-        return MenuFacade::get($menuName, $htmlAttrs, $default, $label);
+        return MenuFacade::get($menuName, $attributes, $default, $label);
     }
 
     /**
@@ -56,22 +82,7 @@ class ItemTypes
         return $html;
     }
 
-    /**
-     * Creates a link to a route
-     * 
-     * @param  string $route
-     * @param  string $title
-     * @param  array  $attributes
-     * @param  array  $parameters
-     * @param  bool   $https
-     * @return string
-     */
-    public function route ($route, $title = null, $attributes = array(), $parameters = array(), $https = null)
-    {
-        // generates a link
-        $url = \URL::route($route, $parameters, $https);
-        return $this->link($url, $title, $attributes, $parameters, $https);
-    }
+    
     /**
      * Creates a new menu type
      * 
@@ -83,6 +94,26 @@ class ItemTypes
     {
         // adds a new type
          $this->macros[$typeName] = $closure;
+    }
+
+    /**
+     * Returns the registered macros
+     * 
+     * @return array
+     */
+    public function getMacros()
+    {
+        return $this->macros;
+    }
+
+    /**
+     * Returns menu item types
+     * 
+     * @return array
+     */
+    public function get()
+    {
+        return array_merge($this->types, array_keys($this->macros));
     }
     /**
       * Build a list of HTML attributes from an array.
@@ -96,7 +127,7 @@ class ItemTypes
 
         foreach ((array) $attributes as $key => $value) {
             // For numeric keys, we will assume that the key and the value are the
-            // same, as this will conver HTML attributes such as "required" that
+            // same, as this will convert HTML attributes such as "required" that
             // may be specified as required="required", etc.
             if (is_numeric($key)) {
                 $key = $value;
@@ -128,7 +159,7 @@ class ItemTypes
      *
      * @param  string  $method
      * @param  array   $parameters
-     *
+     * @throws \Exception
      * @return mixed
      */
     public function __call($method, $parameters)

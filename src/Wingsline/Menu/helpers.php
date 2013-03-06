@@ -81,3 +81,38 @@ if (!function_exists('strposa')) {
         return empty($chr) ? false : min($chr);
     }
 }
+
+if (!function_exists('arraySubtract')) {
+    /**
+     * Returns the difference between the two arrays using a subkey as comparison
+     *
+     * @param  array $array1
+     * @param  array $array2
+     * @param  string $compareString Key
+     *
+     * @return array
+     */
+    function arraySubtract($array1, $array2, $compareString)
+    {
+        if (!is_array($array1) || !is_array($array2) || !$compareString) {
+            return false;
+        }
+        if (empty($array2)) {
+            return $array1;
+        }
+        $arrResult = array();
+        foreach ($array1 as $arrInsideArray1) {
+            foreach ($array2 as $arrInsideArray2) {
+                $found=false;
+                if ($arrInsideArray1[$compareString]==$arrInsideArray2[$compareString]) {
+                    $found=true;
+                    break;
+                }
+            }
+            if (!$found) {
+                array_push($arrResult, $arrInsideArray1);
+            }
+        }
+        return $arrResult;
+    }
+}

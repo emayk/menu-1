@@ -28,10 +28,25 @@ class Repository implements RepositoryInterface
     public $ItemTypes;
     
     /**
-     * Menu generator
+     * Menu generator instance
+     *
      * @var Generator
      */
     public $Generator;
+
+    /**
+     * Item types Grammar
+     *
+     * @var ItemTypesGrammar
+     */
+    public $Grammar;
+
+    /**
+     * Menu item builder
+     *
+     * @var ItemBuilder
+     */
+    public $Builder;
 
     /**
      * Menu eloquent model
@@ -75,11 +90,13 @@ class Repository implements RepositoryInterface
      * @param ItemTypes $ItemTypes
      * @param Generator $Generator
      */
-    public function __construct (Menu $Menu, ItemTypes $ItemTypes, Generator $Generator)
+    public function __construct (Menu $Menu, ItemTypes $ItemTypes, Generator $Generator, ItemTypesGrammar $Grammar, ItemBuilder $Builder)
     {
         $this->Menu      = $Menu;
         $this->ItemTypes = $ItemTypes;
         $this->Generator = $Generator;
+        $this->Grammar   = $Grammar;
+        $this->Builder   = $Builder;
     }
 
     /**
@@ -87,6 +104,7 @@ class Repository implements RepositoryInterface
      * @param  string $menuName  Name of the menu
      * @param  array  $htmlAttrs Array of html attributes
      * @param  mixed  $default   If no menu items are present we display this content
+     * @param mixed   $label
      * @return mixed
      */
     public function get($menuName, array $htmlAttrs = array(), $default = null, $label = null)
@@ -100,6 +118,7 @@ class Repository implements RepositoryInterface
      * @param  string $menuName  Name of the menu
      * @param  array  $htmlAttrs Array of html attributes
      * @param  mixed  $default   If no menu items present we display this content
+     * @param mixed   $label
      * @return string            Menu's uuid
      */
     public function create($menuName, array $htmlAttrs = array(), $default = null, $label = null)
@@ -111,8 +130,8 @@ class Repository implements RepositoryInterface
         }
         $menu = new \stdClass;
         $menu->uuid = $uuid;
-        $menu->menuName = $menuName;
-        $menu->htmlAttrs = $htmlAttrs;
+        $menu->menu_name = $menuName;
+        $menu->html_attrs = $htmlAttrs;
         $menu->default = $default;
         $menu->label = $label;
         $this->menus[$menu->uuid] = $menu;
@@ -130,14 +149,14 @@ class Repository implements RepositoryInterface
     public function createItem($menuName, $itemType, $itemOrder = 0, $htmlAttrs = array())
     {
         $menuItem = new \stdClass;
-        $menuItem->menuName = $menuName;
-        $menuItem->itemType = $itemType;
-        $menuItem->itemOrder = $itemOrder;
-        $menuItem->htmlAttrs = $htmlAttrs;
-        $menuItem->typeAttrs = array_slice(func_get_args(), 4);
+        $menuItem->menu_name = $menuName;
+        $menuItem->item_type = $itemType;
+        $menuItem->item_order = $itemOrder;
+        $menuItem->html_attrs = $htmlAttrs;
+        $menuItem->type_attrs = array_slice(func_get_args(), 4);
         // if the item type is a menu, we create that menu if doesn't exists
         if ($itemType == 'menu') {
-            call_user_func_array(array($this, 'create'), $menuItem->typeAttrs);
+            call_user_func_array(array($this, 'create'), $menuItem->type_attrs);
         }
         $this->menuItems[$menuName][] = $menuItem;
 
@@ -145,6 +164,7 @@ class Repository implements RepositoryInterface
 
     /**
      * Finalizes the menu. This function is automatically called in the filters.php
+     *
      * @param  \Illuminate\Http\Response $response
      * @return void
      */
@@ -153,7 +173,7 @@ class Repository implements RepositoryInterface
 
         // before we finalize the menus, we make sure we get the menu items
         // from the db for all the requested menus
-        $menuNames = objectsGetProperty($this->menus, 'menuName');
+        $menuNames = objectsGetProperty($this->menus, 'menu_name');
         // if we don't have menus called we don't need to continue
         if (empty($menuNames)) {
             return;
@@ -183,9 +203,34 @@ class Repository implements RepositoryInterface
         return Uuid::uuid5(Uuid::NAMESPACE_DNS, md5(json_encode((array) $data)))->toString();
     }
 
+    /**
+     * Returns the ItemTypes instance
+     *
+     * @return ItemTypes
+     */
     public function getItemTypes()
     {
         return $this->ItemTypes;
+    }
+
+    /**
+     * Grammar instance
+     *
+     * @return ItemTypesGrammar
+     */
+    public function getGrammar()
+    {
+        return $this->Grammar;
+    }
+
+    /**
+     * Returns the Builder instance
+     *
+     * @return ItemBuilder
+     */
+    public function getBuilder()
+    {
+        return $this->Builder;
     }
 
     /**
@@ -198,6 +243,11 @@ class Repository implements RepositoryInterface
     public function createType ($typeName, \Closure $closure)
     {
         $this->ItemTypes->macro($typeName, $closure);
+    }
+
+    public function createGrammar($typeName, \Closure $closure)
+    {
+        $this->Grammar->macro($typeName, $closure);
     }
     // --------------------------------------------------------------
     // Protected functions
@@ -221,18 +271,18 @@ class Repository implements RepositoryInterface
                 continue;
             }
             $search[$index] = $this->placeholder($menu->uuid);
-            $replacement = $menu->label . $menu->openingTag;
             // check if we have menu items for this menu
-            if (isset($this->menuItems[$menu->menuName])) {
+            if (isset($this->menuItems[$menu->menu_name])) {
+                $replacement = $menu->label . $menu->openingTag;
                 // sort the $menuItems by itemOrder property
-                $this->menuItems[$menu->menuName] = array_reverse($this->menuItems[$menu->menuName]);
+                $this->menuItems[$menu->menu_name] = array_reverse($this->menuItems[$menu->menu_name]);
                 usort(
-                    $this->menuItems[$menu->menuName],
+                    $this->menuItems[$menu->menu_name],
                     function ($itemA, $itemB) {
-                        return strnatcmp($itemA->itemOrder, $itemB->itemOrder); // return (0 if ==), (-1 if <), (1 if >)
+                        return strnatcmp($itemA->item_order, $itemB->item_order); // return (0 if ==), (-1 if <), (1 if >)
                     }
                 );
-                $replacement .= implode(objectsGetProperty($this->menuItems[$menu->menuName], 'html'));
+                $replacement .= implode(objectsGetProperty($this->menuItems[$menu->menu_name], 'html'));
                 $replacement .= $menu->closingTag;
             } else {
                 $replacement = $menu->default;
@@ -260,13 +310,13 @@ class Repository implements RepositoryInterface
         foreach ($menuItems as $menuItem) {
             $this->dbRetrieved[] = $menuItem->id;
             // we json_decode the attributes for the menu and create the menus
-            $menuItem->typeAttrs = $menuItem->typeAttrs ? json_decode($menuItem->typeAttrs, true) : array();
-            $menuItem->htmlAttrs = $menuItem->htmlAttrs ? json_decode($menuItem->htmlAttrs, true) : array();
-            $params = array($menuItem->menuName, $menuItem->itemType, (int) $menuItem->itemOrder, $menuItem->htmlAttrs);
-            $params = array_merge($params, array_values($menuItem->typeAttrs));
+            $menuItem->type_attrs = $menuItem->type_attrs ? json_decode($menuItem->type_attrs, true) : array();
+            $menuItem->html_attrs = $menuItem->html_attrs ? json_decode($menuItem->html_attrs, true) : array();
+            $params = array($menuItem->menu_name, $menuItem->item_type, (int) $menuItem->item_order, $menuItem->html_attrs);
+            $params = array_merge($params, array_values($menuItem->type_attrs));
             call_user_func_array(array($this, 'createItem'), $params);
             // if the item is a menu type we need to get that menu items as well
-            if ($menuItem->itemType == 'menu') {
+            if ($menuItem->item_type == 'menu') {
                 $this->dbGetMenuItems($params[4]);
             }
         }
@@ -276,6 +326,7 @@ class Repository implements RepositoryInterface
      * Creates a menu placeholder
      * 
      * @param string $string
+     * @return string
      */
     public function placeholder ($string)
     {
