@@ -1,6 +1,6 @@
 {
     "name": "wingsline/menu",
-    "description": "",
+    "description": "A menu manager for Laravel 4",
     "authors": [
         {
             "name": "Arpad Olasz",
